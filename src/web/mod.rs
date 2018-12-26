@@ -129,6 +129,9 @@ impl CratesfyiHandler {
         router.get("/crate/:name",
                    crate_details::crate_details_handler,
                    "crate_name");
+        router.get("/crate/:name/info.json",
+                   crate_details::crate_details_handler,
+                   "crate_name_json");
         router.get("/crate/:name/",
                    crate_details::crate_details_handler,
                    "crate_name_");

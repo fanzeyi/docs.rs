@@ -229,14 +229,28 @@ pub fn crate_details_handler(req: &mut Request) -> IronResult<Response> {
 
     let conn = extension!(req, Pool);
 
-    match_version(&conn, &name, req_version)
+    let details = match_version(&conn, &name, req_version)
         .and_then(|version| CrateDetails::new(&conn, &name, &version))
-        .ok_or(IronError::new(Nope::CrateNotFound, status::NotFound))
-        .and_then(|details| {
-            Page::new(details)
-                .set_true("show_package_navigation")
-                .set_true("javascript_highlightjs")
-                .set_true("package_navigation_crate_tab")
-                .to_resp("crate_details")
-        })
+        .ok_or(IronError::new(Nope::CrateNotFound, status::NotFound))?;
+
+    if req.url.path().join("/").ends_with("info.json") {
+        use iron::status;
+        use iron::headers::{Expires, HttpDate, CacheControl, CacheDirective, ContentType,
+                            AccessControlAllowOrigin};
+
+        let mut resp = Response::with((status::Ok, details.to_json().to_string()));
+        resp.headers.set(ContentType("application/json".parse().unwrap()));
+        resp.headers.set(Expires(HttpDate(time::now())));
+        resp.headers.set(CacheControl(vec![CacheDirective::NoCache,
+                                           CacheDirective::NoStore,
+                                           CacheDirective::MustRevalidate]));
+        resp.headers.set(AccessControlAllowOrigin::Any);
+        Ok(resp)
+    } else {
+        Page::new(details)
+            .set_true("show_package_navigation")
+            .set_true("javascript_highlightjs")
+            .set_true("package_navigation_crate_tab")
+            .to_resp("crate_details")
+    }
 }
